@@ -1,0 +1,86 @@
+# sigma_fleet_envelopes.yaml - per-node fleet envelopes: RAM ceilings, thermal
+# limits, duty bands. v2 re-landing.
+#
+# Provenance: the original configs/sigma_fleet_envelopes.yaml was minted
+# desktop-side during the aspire cosign handoff (watch/inbox/SIGMA_HANDOFF_
+# EXECUTION_20261030.md) but never landed on this checkout; the moonshot-3
+# audit (watch/inbox/ractor_engine/2026-10-30-sigma-os-v0/moonshot-3.md,
+# finding 3) verified its absence here. This file re-lands the envelope plane
+# on the release tree with ONLY receipt-backed numbers: every value below
+# names its receipt, and unreceipted values are explicit nulls, not guesses
+# (Constitution Article 5: when a claim exceeds the tier, the claim is wrong).
+#
+# Consumer: the routing seat (affinity demotion lives in fleet/providers.yaml
+# rows) and the autonomic admission checks on each lung. Verifier: this file
+# is data; the census that validates it is RECEIPTS.md at the repo root.
+
+schema: sigma_fleet_envelopes.v1
+as_of: "2026-10-31"
+
+# Device-class watt rows are the lane O / lane C two-state model
+# (organs/cost-priced/cost_model.py DEVICE_CLASSES); duty bands from lane O
+# (watch/inbox/SIGMA_BURN_LANE_O_POWER_20261030.md): below ~9% duty the idle
+# floor wins, the 10-30% band is the v2 target (SIGMA_TRIANGULATION
+# PART V v2 gate).
+defaults:
+  duty_band_target: [0.10, 0.30]
+  duty_floor_warning: 0.09      # below this the idle floor dominates the bill
+  month_hours: 720
+  tariff_usd_kwh: 0.15
+
+nodes:
+  desktop:
+    role: lung_primary          # primary seat; RX 5600 XT ~6GB VRAM desktop
+    device_class: scavenger     # idle 60W / load 110W CPU inference (lane O)
+    ram_gb: 64                  # receipts: fleet/lanes.yaml hardware_envelope
+    ram_ceiling_gb: 48          # leave headroom for the host OS and the seat
+    thermal_limit_c: null       # unmeasured on this surface (blind spot B4; the tok/s decay guard is organs/thermal-decay-guard)
+    measured_tok_s_gemma2b_clean: 71.86   # memory/runs/route1/summary_env_matched.json, 30 rows
+    measured_tok_s_gemma2b_contended: 6.94 # memory/runs/route1/summary.json, 30 rows
+    notes: "10.4x same-day tok/s drift between windows is why the contention field is mandatory in sigma_route.v1 rows."
+
+  bob-2:
+    role: lung_worker_demoted   # FALSIFIED for bulk generation (ROUTE-1)
+    device_class: laptop        # 5W idle / 25W inferring (lane O)
+    ram_gb: null                # declared small-box; not receipted on this surface
+    ram_ceiling_gb: null
+    thermal_limit_c: null
+    affinity: [embed, scut, router]
+    proof_generation: {model: qwen2.5:3b-instruct, seconds: 75.4, date: "2026-10-30"}
+    measured_tok_s: ~8          # watch/inbox/BOB_RELIGHT_NIGHT_20261030.md, qwen2.5:3b
+    notes: "Demotion block + capability rows live verbatim in fleet/providers.yaml ollama-bob-2."
+
+  t90:
+    role: spore                 # drawer phone, Termux
+    device_class: spore
+    ram_gb: null                # unmeasured on this surface; envelope row is aspire-side
+    ram_ceiling_gb: null
+    thermal_limit_c: null
+    spore_door_port: 8768       # watch/inbox/HANDOFF_SIGMA_OS_PITCH5_SUMMIT_TO_ZAI_20261030.md
+    notes: "Enrolled via authorized ADB link 2026-10-30; node key minted on-device."
+
+  pixel-11-pro:
+    role: spore
+    device_class: spore
+    ram_gb: null
+    ram_ceiling_gb: null
+    thermal_limit_c: null
+    spore_door_port: 8768
+    notes: "Enrolled via authorized ADB link 2026-10-30; node key minted on-device."
+
+  moto-g:
+    role: spore
+    device_class: spore
+    ram_gb: null
+    ram_ceiling_gb: null
+    thermal_limit_c: null
+    spore_door_port: 8768
+    notes: "First cross-silicon 2-of-2 checkpoint peer (PITCH5 receipt, Pitch 4b)."
+
+# Fleet census at re-landing: 5/5 hardware nodes live per the handoff receipt
+# (fleet-visible organ renders the same census from var/fleet/heartbeats.jsonl).
+census:
+  hardware_nodes: 5
+  lungs: 2
+  spores: 3
+  receipt: watch/inbox/SIGMA_HANDOFF_EXECUTION_20261030.md

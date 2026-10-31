@@ -1,0 +1,181 @@
+#autoinstall
+# SIGMA kintsugi seed, GENERIC stick variant (interactive storage screen).
+# Consumer: subiquity autoinstall, entered via GRUB entry 1 with kernel args
+#   autoinstall ds=nocloud;s=/cdrom/nocloud/sigma/
+# Verifier: boot/kintsugi_render.py selftest (yaml round-trip, placeholder
+# scan, embedded-script bash -n) plus the qemu smoke test
+# (boot/kintsugi_smoke.sh) and the checklist in
+# watch/inbox/SIGMA_PATH_14_KINTSUGI_BUILD_20261030.md.
+# Placeholders are rendered at build time by boot/kintsugi_build.sh from
+# operator input; building without them is refused (consent law: the password
+# hash and ssh keys come from the operator, nothing deploy-secret is baked).
+# The serial-pinned variant lives in user-data.pinned in this directory.
+#
+# D-K JOIN RESOLUTION (red-team A1/A2, watch/inbox/
+# SIGMA_REDTEAM_19_ATTACKS_20261030.md, 2026-10-30): this seed embeds NO
+# tailscale authkey, ever, and nothing auto-runs the join. Lane K's
+# authkey-on-stick shape (watch/inbox/SIGMA_BURN_LANE_K_TRANSPORT_20261030.md,
+# section d) is rejected because its own source proves tagged tailnet devices
+# have key expiry OFF and key revocation does not evict already-joined boxes,
+# so a found stick key would be a permanent tailnet passport. Instead the
+# firstboot script prints the instruction and the estate-wait service keeps
+# printing it while the tailnet is still down; the operator at the console
+# types
+#   sudo tailscale up
+# and that typed join is the consent act (this also closes red-team A4's
+# unclaimed-box race, which the old auto "tailscale up --qr" line opened).
+# This is a deliberate deviation from lane K's two-stage key design; K's
+# transport spine (tailscale managed tailnet + mDNS discovery floor) stands.
+autoinstall:
+  version: 1
+  # The one interactive screen: detected disk shown by model and size, erase
+  # confirmed there. That screen is the disk-level ask; menu selection is the
+  # machine-level ask. If a future subiquity rejects interactive-sections the
+  # newer equivalent is:  interactive: {storage: true}
+  interactive-sections:
+    - storage
+  locale: en_US.UTF-8
+  keyboard: {layout: us}
+  network:
+    network:
+      version: 2
+      ethernets:
+        id0: {match: {name: "en*"}, dhcp4: true}
+  identity:
+    realname: Mag Lung
+    username: mark
+    hostname: sigma-generic
+    password: "@PASSWORD_HASH@"
+  ssh:
+    install-server: true
+    authorized-keys:
+      - "@SSH_KEYS@"
+    allow-pw: false
+  # gate preconditions per boot/mag_relight_gate.sh header (git curl zstd)
+  # plus wget (gate uses it) and rsync (curated chunked transfer)
+  packages: [git, curl, wget, zstd, rsync]
+  late-commands:
+    - curtin in-target -- sh -c 'curl -fsSL https://tailscale.com/install.sh | sh'
+    - curtin in-target -- systemctl enable tailscale ssh
+    - |
+      mkdir -p /target/home/mark/estate-bootstrap
+      cp -r /cdrom/nocloud/sigma/scripts/. /target/home/mark/estate-bootstrap/
+      chown -R 1000:1000 /target/home/mark/estate-bootstrap
+  user-data:
+    package_update: true
+    output: {all: "| tee -a /var/log/sigma_firstboot.log"}
+    write_files:
+      - path: /usr/local/sbin/sigma_firstboot.sh
+        permissions: "0755"
+        content: |
+          #!/bin/bash
+          # SIGMA firstboot: user-mode ollama for mark + the tailscale login
+          # surface. Recipe proven on the aspire relight night 2026-10-29; the
+          # current bundle is .tar.zst (the .tgz guess in the lane D draft is
+          # corrected here).
+          set -u
+          command -v zstd >/dev/null 2>&1 || { echo "FATAL: zstd missing"; exit 1; }
+          sudo -u mark bash -c 'set -e
+          mkdir -p ~/.local/bin ~/.local/lib
+          cd /tmp
+          wget -O ollama.tar.zst https://github.com/ollama/ollama/releases/latest/download/ollama-linux-amd64.tar.zst
+          tar --zstd -xf ollama.tar.zst -C ~/.local
+          export PATH="$HOME/.local/bin:$PATH"
+          ~/.local/bin/ollama --version
+          pkill -f "ollama serve" 2>/dev/null || true
+          BIND="$(tailscale ip -4 2>/dev/null | head -1)"; BIND="${BIND:-127.0.0.1}"
+          # bind law (lane F / PoeLLM): tailnet address when joined, loopback until then, never 0.0.0.0
+          OLLAMA_HOST="$BIND" nohup ~/.local/bin/ollama serve > ~/ollama_serve.log 2>&1 &
+          sleep 3
+          wget -qO- http://127.0.0.1:11434/api/version && echo SERVE_OK
+          OLLAMA_HOST=127.0.0.1 ~/.local/bin/ollama pull gemma:2b && echo MODEL_OK
+          ' || { echo "FATAL: ollama user-mode install failed"; exit 1; }
+          echo "SIGMA firstboot: ollama serving (bind: tailnet if joined, else loopback) as mark"
+          echo "join facts:"
+          ip -4 addr show | grep -w inet || true
+          # D-K join resolution: no authkey is baked and nothing auto-joins
+          # (red-team A1/A2/A4). The operator at the console types the join;
+          # the typed command is the consent act.
+          echo "join the tailnet: sudo tailscale up"
+          echo "  (the interactive login URL/QR prints when it runs; no authkey exists on this stick)"
+          echo "next: desktop seat pushes the curated chunked transfer (include-list, never a raw stream)."
+      - path: /usr/local/sbin/sigma_estate_wait.sh
+        permissions: "0755"
+        content: |
+          #!/bin/bash
+          # SIGMA estate wait: the transfer hook. Polls for the curated tree at
+          # the landing path proven by bob_relight.sh, then runs the relight
+          # gate and prints the introduction card. Runs as mark via
+          # sigma-estate-wait.service. Output also lands in sigma_estate.log.
+          set -u
+          REPO="$HOME/Documents/projects/sigma-os"
+          LOGF="$HOME/sigma_estate.log"
+          WAIT_SECS="${SIGMA_ESTATE_WAIT_SECS:-21600}"
+          POLL=30
+          exec > >(tee -a "$LOGF") 2>&1
+          echo "[estate-wait $(date -u +%FT%TZ)] waiting for the curated tree at $REPO"
+          # D-K join resolution: the tailnet join is the operator's typed act,
+          # so this service prints the instruction and keeps reminding (every
+          # 10 minutes) while the tailnet is still down.
+          if ! tailscale status >/dev/null 2>&1; then
+              echo "[estate-wait] join the tailnet: sudo tailscale up"
+          fi
+          elapsed=0
+          while [ "$elapsed" -lt "$WAIT_SECS" ]; do
+              if [ -f "$REPO/main.py" ] && [ -f "$REPO/requirements.txt" ]; then
+                  echo "[estate-wait] tree present; running the relight gate"
+                  cd "$REPO" || exit 2
+                  bash boot/mag_relight_gate.sh "${SIGMA_BATTERY:-gemma:2b nomic-embed-text deepseek-r1:1.5b}"
+                  GATE=$?
+                  echo "[estate-wait] gate exit $GATE"
+                  python3 organs/consent-gated-join/mag_introduce.py --json > "$HOME/introduction.json" || true
+                  python3 organs/consent-gated-join/mag_introduce.py || true
+                  cat <<'NEXT'
+          NEXT STEPS (operator or desktop seat):
+            tailnet: sudo tailscale up   (operator types it at the console; then: tailscale ip -4)
+            enroll:  desktop runs organs/consent-gated-join/fleet_enroll.py --introduction-file introduction.json
+                     (proof-gated: no generation proof, no membership)
+          NEXT
+                  exit "$GATE"
+              fi
+              sleep "$POLL"
+              elapsed=$((elapsed + POLL))
+              if [ $((elapsed % 600)) -eq 0 ] && ! tailscale status >/dev/null 2>&1; then
+                  echo "[estate-wait] still not joined; join the tailnet: sudo tailscale up"
+              fi
+          done
+          echo "[estate-wait] timed out without the curated tree; rerun: sudo systemctl restart sigma-estate-wait"
+          exit 1
+      - path: /etc/systemd/system/sigma-estate-wait.service
+        permissions: "0644"
+        content: |
+          # SIGMA estate transfer hook: waits for the curated tree, then runs
+          # the relight gate + introduction. Journal + physical console.
+          [Unit]
+          Description=SIGMA estate wait: curated tree, relight gate, introduction
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          Type=oneshot
+          User=mark
+          ExecStart=/usr/local/sbin/sigma_estate_wait.sh
+          TimeoutStartSec=8h
+          StandardOutput=journal+console
+          StandardError=journal+console
+
+          [Install]
+          WantedBy=multi-user.target
+    runcmd:
+      - [/usr/local/sbin/sigma_firstboot.sh]
+      - |
+        loginctl enable-linger mark
+        crontab -u mark - <<'CRON'
+        PATH=/home/mark/.local/bin:/usr/bin:/bin
+        OLLAMA_HOST=127.0.0.1  # loopback at firstboot; the estate keepalive upgrades to the tailnet bind after join
+        */5 * * * * pgrep -x ollama >/dev/null 2>&1 || ( nohup $HOME/.local/bin/ollama serve >> $HOME/ollama_serve.log 2>&1 & )
+        @reboot OLLAMA_HOST=127.0.0.1 nohup $HOME/.local/bin/ollama serve >> $HOME/ollama_serve.log 2>&1 &
+        CRON
+      - [systemctl, enable, --now, sigma-estate-wait.service]
+    final_message: "SIGMA firstboot done; log /var/log/sigma_firstboot.log"
+  shutdown: reboot

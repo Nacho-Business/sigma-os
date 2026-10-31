@@ -1,0 +1,85 @@
+# SIGMA fleet lanes - the routing matrix (distilled from the estate's
+# configs/lanes.yaml, 2026-10-31 restructure). The estate file also carries
+# seat-escalation machinery (gate verdicts, judge cascades, marker syntax)
+# that stays estate-side; this release carries the lane ladder and the local
+# model doctrine the fleet itself runs on.
+
+default_lane: L0
+
+# L0 = local Ollama (janitor) - L1 = free remote - L2 = specialist - L3 = human
+# Doctrine: gemma:2b = scut; gemma4 = short worker bursts; specialist = judgment.
+# Junk-tier honesty (Constitution Article 5): SIGMA claims L0 janitor work on
+# reclaimed hardware; it does not claim frontier capability or latency-critical work.
+lanes:
+  L0:
+    name: local
+    backend: ollama
+    roles: [clerk, orchestrator, worker, critic, biographer]
+  L1:
+    name: free_remote
+    backend: openrouter
+    enabled: false   # off by default in the release: flip on with OPENROUTER_API_KEY
+    never_tiers: [T0, T1]
+    model_env: OPENROUTER_MODEL
+    default_model: openrouter/auto
+  L2:
+    name: specialist
+    backend: harness
+    require_priority: true
+  L3:
+    name: human
+    backend: wait
+  L_gstd:
+    name: gstd_network_pool
+    backend: openai_compat
+    enabled: true
+    base_url: http://100.72.38.3:8080/v1     # t90 (fleet/lanes receipt 2026-10-30)
+    fallback_url: http://100.79.122.101:8080/v1  # pixel-11-pro
+    model: auto
+    privacy: network
+    roles: [swarm_worker, background_scut, pool_inferrer]
+    note: "Decentralized compute pool backed by fleet mobile nodes (t90, pixel-11-pro)"
+
+local_models:
+  # Home PC envelope (receipt: hardware_envelope below, 2026-08-06):
+  # RX 5600 XT ~6GB VRAM, 64GB RAM, AMD (no CUDA).
+  # Doctrine: scut=2b, desk/voice=qwen-desk, coding worker=qwen2.5-coder:7b.
+  # Never stack two 7B/8B models. OLLAMA_MAX_LOADED_MODELS=1, CONTEXT=8k (not 65k).
+  clerk: gemma:2b
+  router: gemma:2b                   # keep tiny for routing scut (not coder)
+  orchestrator: gemma:2b             # repack / scut
+  desk_orchestrator: qwen-desk:latest  # 69 t/s probe winner on this GPU
+  voice: gemma:2b                    # override with MAG_VOICE_LOCAL_MODEL
+  worker: qwen2.5-coder:7b           # primary L0 coding worker
+  critic: qwen-desk:latest           # sequential - do not dual-resident with worker
+  biographer: qwen-desk:latest
+  embed: nomic-embed-text
+
+load_policy:
+  mode: sequential
+  prefer_keep_worker_hot: false
+  max_resident: 1
+  note: "Unload 8B when switching to voice/desk; prefer qwen-desk resident"
+
+# Hardware envelope (home desktop) - skills/models operate inside this.
+hardware_envelope:
+  as_of: "2026-08-06"
+  system_ram_gb: 64
+  gpu: "AMD Radeon RX 5600 XT"
+  vram_gb_approx: 6
+  cuda: false
+  ollama_context: 8192
+  ollama_max_loaded: 1
+  escalate: [deepseek, grok_tui]
+  never_local: ["35b+", "70b", "full 65k context on 8B"]
+
+priority_markers:
+  - "[priority]"
+  - "[L2]"
+
+local_markers:
+  - "[mag]"
+  - "[local]"
+  - "[L0]"
+
+usage_log: var/usage.jsonl

@@ -1,0 +1,12 @@
+[Unit]
+Description=Mag log-smith timer: daily retention sweep of logs/ at 03:17 local
+Comment=retention bound lives in mag-log-smith.service Comment= (SIGMA lane T b)
+
+[Timer]
+OnCalendar=*-*-* 03:17
+RandomizedDelaySec=900
+Persistent=true
+Unit=mag-log-smith.service
+
+[Install]
+WantedBy=timers.target

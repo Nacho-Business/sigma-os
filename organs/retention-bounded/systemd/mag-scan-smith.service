@@ -1,0 +1,8 @@
+[Unit]
+Description=Mag scan-smith: weekly aging sweep of .mimosa scan cache subdirs
+Comment=retention: .mimosa caches (history, hook-state, hook-status) age >30d as gzip-in-place, nothing is ever deleted (purge radius stays an operator call); finding-ledger + reports are keep-side and survive forever; own receipt logs/scan_smith.jsonl bounded 2000 rows (SIGMA lane T b; cures the .mimosa 271G pile, incident 2 of THE_429G_DISCOVERY_20261030)
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REPO_ROOT@
+ExecStart=/bin/bash @REPO_ROOT@/organs/retention-bounded/scan_smith.sh --apply

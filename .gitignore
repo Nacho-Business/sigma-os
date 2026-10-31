@@ -1,0 +1,7 @@
+# runtime state only - the tree itself stays clean
+var/
+logs/
+__pycache__/
+*.pyc
+*.part
+kintsugi_smoke_shots/

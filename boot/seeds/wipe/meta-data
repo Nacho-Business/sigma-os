@@ -1,0 +1,5 @@
+# cloud-init NoCloud meta-data for the SIGMA wipe seed. Consumer: cloud-init
+# NoCloud datasource in the live session. Verifier:
+# tools/kintsugi_render.py selftest. Distinct instance-id from the sigma seed
+# so the two seeds never alias each other.
+instance-id: sigma-kintsugi-wipe-001

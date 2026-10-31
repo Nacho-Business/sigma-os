@@ -1,0 +1,5 @@
+# cloud-init NoCloud meta-data for the SIGMA install seed. Consumer: cloud-init
+# NoCloud datasource (user-data + meta-data must sit at the seed fs root).
+# Verifier: tools/kintsugi_render.py selftest. Deliberately minimal: identity
+# comes from the autoinstall user-data, not from meta-data.
+instance-id: sigma-kintsugi-sigma-001

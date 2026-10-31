@@ -1,0 +1,43 @@
+{
+ "schema": "seat_allowlist.v1",
+ "note": "PUBLIC Ed25519 keys only - never a private key. SIGMA membership is adoption-by-proof: a hardware node earns a row here by a fresh signed demonstration at join time (organs/consent-gated-join), never by scan or autorun (Constitution Article 1). Set \"revoked\": true to cut a node off. Distilled 2026-10-31 from the estate's configs/seat_allowlist.json; only keys with a receipt on this surface are carried.",
+ "skew_s": 60,
+ "quorum": {
+  "default": 2,
+  "note": "distinct allowlisted nodes (author excluded) whose approve marks a checkpoint or proposal ready; an approve from an operator_seats member marks it ready alone (operator override).",
+  "require_non_author_approval": true
+ },
+ "operator_seats": [
+  "nacho"
+ ],
+ "nodes": {
+  "node:desktop-7c70ksc": {
+   "public_hex": "cf96516d38f7a870c05773d51f93bcdbd44bb815b7647b245b7a6fde16c10ab2",
+   "added": "2026-10-30",
+   "kind": "node_core",
+   "class": "hardware",
+   "role": "lung_primary",
+   "note": "minted host-side at ~/.mag_seat/nodes/; cosigner of the first dual-witnessed C2SP checkpoint (receipt: watch/inbox/SIGMA_HANDOFF_EXECUTION_20261030.md, estate repo)"
+  },
+  "node:t90": {
+   "public_hex": "fc985d16ad2e9f61b6d580fcc3ec65b20840bb995ade1cfbb4bd0038d969f742",
+   "added": "2026-10-30",
+   "kind": "node_spore",
+   "class": "hardware",
+   "role": "spore",
+   "note": "keygen on-device (Termux drawer phone); spore door live on :8768; signed challenges verified from the phone and the desktop (receipt: SIGMA_HANDOFF_EXECUTION_20261030.md, estate repo)"
+  },
+  "node:pixel": {
+   "public_hex": "10eee2461bb68e6521efb55069075777843f088746ae7f2c7d4163bd9deb37ed",
+   "added": "2026-10-30",
+   "kind": "node_spore",
+   "class": "hardware",
+   "role": "spore",
+   "note": "keygen on-device (Termux drawer phone); spore door live on :8768 (receipt: SIGMA_HANDOFF_EXECUTION_20261030.md, estate repo)"
+  }
+ },
+ "pending_from_aspire_surface": {
+  "note": "Two further hardware rows were registered on the aspire checkout only and their public keys are not receipted on this surface, so they are pointed at, never guessed: node:bob-2 and node:moto-g (receipt: watch/inbox/HANDOFF_SIGMA_OS_PITCH5_SUMMIT_TO_ZAI_20261030.md, aspire configs/seat_allowlist.json rows 162-179; moto-g was the first cross-silicon 2-of-2 checkpoint peer). Re-land those rows by copying the key material from the holding surface, not from memory.",
+  "rows": ["node:bob-2", "node:moto-g"]
+ }
+}

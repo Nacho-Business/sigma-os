@@ -1,0 +1,12 @@
+[Unit]
+Description=Mag scan-smith timer: weekly .mimosa cache aging, Sunday 04:17 local
+Comment=retention bound lives in mag-scan-smith.service Comment= (SIGMA lane T b)
+
+[Timer]
+OnCalendar=Sun *-*-* 04:17
+RandomizedDelaySec=1800
+Persistent=true
+Unit=mag-scan-smith.service
+
+[Install]
+WantedBy=timers.target

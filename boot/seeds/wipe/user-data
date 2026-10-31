@@ -1,0 +1,47 @@
+#cloud-config
+# SIGMA wipe seed (decommission). Consumer: cloud-init NoCloud inside the LIVE
+# session only; GRUB entry 3 passes ds=nocloud;s=/cdrom/nocloud/wipe/ WITHOUT
+# the autoinstall kernel arg, so subiquity stays interactive and cannot erase.
+# Verifier: tools/kintsugi_render.py selftest asserts this file carries NO
+# runcmd and NO bootcmd keys: nothing here runs by itself. The wipe script is
+# staged; a human types its name at the console, then types the target disk
+# serial verbatim, then types WIPE (the two-man rule from lane D).
+write_files:
+  - path: /usr/local/sbin/sigma-wipe
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      # sigma-wipe: decommission exactly one disk. Two-man rule: the serial is
+      # typed verbatim and must match exactly one disk; the live boot medium is
+      # refused. Zap then one-pass zero (multi-pass shred is an operator call
+      # for a future variant, lane D open question 3).
+      set -u
+      echo "=== SIGMA WIPE (decommission, two-man rule) ==="
+      lsblk -dn -o NAME,SIZE,TYPE,MODEL,SERIAL | awk '$3 == "disk"' | sed 's/^/  /'
+      echo
+      echo "Type the SERIAL (SERIAL column, verbatim) of the ONE disk to erase:"
+      read -r ANSWER
+      [ -n "$ANSWER" ] || { echo "empty answer; aborting"; exit 1; }
+      TARGETS=$(lsblk -dn -o NAME,SERIAL | awk -v s="$ANSWER" '$2 == s {print "/dev/" $1}')
+      N=$(printf '%s\n' "$TARGETS" | grep -c . || true)
+      [ "$N" = "1" ] || { echo "serial matched $N disks; need exactly 1; aborting"; exit 1; }
+      D="$TARGETS"
+      LIVE=$(findmnt -n -o SOURCE /cdrom 2>/dev/null | sed 's/p[0-9]*$//; s/[0-9]*$//' || true)
+      if [ "$LIVE" = "$D" ]; then
+          echo "refusing: $D looks like the live boot medium"
+          exit 1
+      fi
+      lsblk -dn -o SIZE,MODEL,SERIAL "$D" | sed 's/^/  about to erase: /'
+      echo "Type WIPE to confirm one-pass zero of $D:"
+      read -r CONFIRM
+      [ "$CONFIRM" = "WIPE" ] || { echo "aborted"; exit 1; }
+      wipefs --all -f "$D"
+      dd if=/dev/zero of="$D" bs=1M status=progress conv=fsync
+      sync
+      echo "wiped $D; powering off"
+      systemctl poweroff
+  - path: /etc/profile.d/zz-sigma-wipe-hint.sh
+    permissions: "0644"
+    content: |
+      # printed only when a human opens a login shell; nothing auto-runs
+      echo "SIGMA wipe terminal staged: sudo sigma-wipe (lists disks, requires the serial typed verbatim)"

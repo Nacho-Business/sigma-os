@@ -1,0 +1,8 @@
+[Unit]
+Description=Mag log-smith: daily retention sweep of the repo logs/ directory
+Comment=retention: logs/ compress >14d, delete >30d; own receipt logs/log_smith.jsonl bounded 2000 rows (SIGMA lane T b, watch/inbox/SIGMA_BURN_LANE_T_OPS_20261030.md; cures the logs/ 158G pile, incident 2 of THE_429G_DISCOVERY_20261030)
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REPO_ROOT@
+ExecStart=/bin/bash @REPO_ROOT@/organs/retention-bounded/log_smith.sh --apply

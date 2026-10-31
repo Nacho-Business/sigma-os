@@ -1,0 +1,137 @@
+# SIGMA-OS capability-routed provider matrix (distilled from the estate's
+# configs/providers.yaml, 2026-10-31 restructure). The estate file carries 30+
+# cloud provider rows; this release carries the rows SIGMA actually routes on:
+# the local lanes (free_local: true) plus the one proof-backed enrolled lung,
+# verbatim. Enroll new lungs with organs/consent-gated-join/fleet_enroll.py -
+# it inserts above the `  mlx-cluster:` anchor (that anchor is pinned by test).
+# Secrets stay in env vars named under each row; no keys are committed.
+
+defaults:
+  never_remote_tiers: [T0, T1]
+  # FREE-FIRST: local lanes win; paid remote is the fallback for judgment
+  # work only. The estate's full prefer_order (openrouter, groq, z_ai,
+  # together, deepseek fallback, ...) lives in the estate repo receipt
+  # watch/inbox/fifty_wide_20260917/FW11_fence_owners.md era configs; SIGMA
+  # lungs default to local-only and escalate by role, not by reflex.
+  prefer_order:
+    - ollama            # local, free, instant
+    - ollama-bob-2      # enrolled lung (proof-gated membership)
+    - mlx-cluster       # stub: wired for the day the hardware lands
+
+providers:
+  ollama:
+    name: Ollama (local)
+    kind: openai_compat
+    # B2-107 locality law: base_url must be REACHABLE WHERE THE CODE RUNS.
+    # base_url_env lets OLLAMA_HOST point at the right Ollama; the bind law
+    # (boot/seeds/sigma/user-data) says tailnet address when joined, loopback
+    # until then, never 0.0.0.0.
+    base_url_env: OLLAMA_HOST
+    base_url: http://127.0.0.1:11434/v1
+    api_key_env: null          # Ollama ignores key; send "ollama"
+    api_key_default: ollama
+    models:
+      - gemma:2b               # scut / clerk / router
+      - qwen2.5:3b-instruct    # the bob-2 proof model
+      - qwen2.5-coder:7b       # coding worker
+      - gemma4:latest          # short worker bursts
+      - nomic-embed-text       # embed
+    default_model: qwen2.5-coder:7b
+    tier_max: T1               # may see local private
+    free_local: true
+    timeout_seconds: 90        # do not hang voice/UI behind cold 8B loads
+    quota:
+      period: none             # unlimited local
+      max_calls: null
+      max_tokens: null
+
+  # Enrolled 2026-10-30 via fleet_enroll: the introduction carried a live
+  # generation proof (qwen2.5:3b-instruct, 75.4s). The demotion block and the
+  # sigma_route.v1 capability rows below are the ROUTE-1 verdict receipts
+  # (watch/inbox/SIGMA_ROUTE1_VERDICT_20261030.md): the weighted-split thesis
+  # was FALSIFIED on the matched clean window, so bob re-scoped by role.
+  ollama-bob-2:
+    name: "Ollama ollama-bob-2 (Bob-2 100.72.138.62) - enrolled 2026-10-30 via fleet_enroll, proof: qwen2.5:3b-instruct 75.4s"
+    kind: openai_compat
+    # B2-107 locality: reachable where the FLEET code runs; the lung itself uses loopback.
+    base_url_env: null
+    base_url: http://100.72.138.62:11434/v1
+    api_key_env: null
+    api_key_default: ollama
+    models:
+      - qwen2.5:3b-instruct
+      - deepseek-r1:1.5b
+      - nomic-embed-text:latest
+      - gemma:2b
+    default_model: qwen2.5:3b-instruct
+    tier_max: T1
+    free_local: true
+    timeout_seconds: 240      # small-box CPU generation is slow; don't clip cold loads
+    quota:
+      period: none
+      max_calls: null
+      max_tokens: null
+    # sigma_route.v1 DEMOTED (2026-10-30): operative verdict. Evidence (matched clean window):
+    # memory/runs/route1/summary_env_matched.json: arm C = 1.057x min(A,B) wall - bob's single
+    # job holds the fleet critical path open; FALSIFIED (pre-registered falsifier).
+    # Contended window: memory/runs/route1/summary.json read C = 0.101x on a CONTENDED desktop:
+    # 6.94 vs 71.86 tok/s same-day (10.4x drift); clean ratio desktop:bob = 110.55:1.
+    # Consequence in force: bob = embed + async scut + router + presence on the
+    # local-generation axis only.
+    affinity: [embed, scut, router]
+    capabilities:
+      sigma_route.v1:
+        - model: gemma:2b
+          node: ollama
+          contention: contended
+          tok_per_s: 6.94
+          rows: 30
+          source: memory/runs/route1/summary.json
+        - model: gemma:2b
+          node: ollama
+          contention: clean_window
+          tok_per_s: 71.86
+          rows: 30
+          source: memory/runs/route1/summary_env_matched.json
+        - model: gemma:2b
+          node: ollama-bob-2
+          contention: contended
+          tok_per_s: 0.65
+          rows: 30
+          source: memory/runs/route1/summary.json
+        - model: gemma:2b
+          node: ollama-bob-2
+          contention: clean_window
+          tok_per_s: 0.65
+          rows: 30
+          source: memory/runs/route1/summary_env_matched.json
+
+  # THE ANCHOR - fleet_enroll inserts new rows directly above this line.
+  # Stub kept from the estate: the Mac Studio quad (MLX/exo) is wired now so
+  # the fleet routes there on day one; base_url points at the future local
+  # gateway. The estate stub row name carried an em-dash; dropped in this
+  # distillation per the release style law.
+  mlx-cluster:
+    name: "Mac Studio quad (MLX/exo cluster), the physical substrate (stub)"
+    kind: openai_compat
+    base_url: http://127.0.0.1:7777/v1
+    api_key_env: null           # local, no key
+    models:
+      - mlx-flagship            # placeholder: a 355B-class MoE at 4-bit per node
+    default_model: mlx-flagship
+    tier_max: T1                # local private - the sovereignty tier
+    free_local: true
+    timeout_seconds: 300
+    quota:
+      period: none
+      max_calls: null
+      max_tokens: null
+
+# Role routing (estate routing block, reduced to the local-first spine).
+# Cloud fallbacks omitted here: SIGMA claims latency-tolerant janitor work
+# (Constitution Article 5); judgment escalations are an estate-seat concern.
+routing:
+  scut: [ollama, ollama-bob-2]
+  recall: [ollama]
+  embed: [ollama, ollama-bob-2]
+  default: [ollama, ollama-bob-2, mlx-cluster]
